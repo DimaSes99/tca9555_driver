@@ -10,7 +10,7 @@
 extern "C" {
 #endif
 
-/*************************** C types headers *****************************/
+/*************************** C types headers *********************************/
 #ifdef __KERNEL__
 #include <linux/types.h>
 #include <linux/kernel.h>
@@ -18,6 +18,8 @@ extern "C" {
 #include <stdint.h>
 #include <stddef.h>
 #endif
+
+/**************************** Type definition ********************************/
 
 /**
  * @brief TCA9555 error code
@@ -109,6 +111,8 @@ typedef struct {
     const tca955_i2c_com_fptr_t i2c_write;
     const tca9555_addr_t i2c_addr;
 } tca9555_dev_t;
+
+/******************************* Driver API **********************************/
 
 /**
  * @brief Initialization of GPIO pin
