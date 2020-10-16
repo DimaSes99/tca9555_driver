@@ -52,20 +52,24 @@
 #define BIT_TGL(reg,nbit)                   (reg) ^=  (1<<(nbit))
 #define BIT_CHECK(reg,nbit)                 ((reg) &  (1<<(nbit)))
 
-
-#define TCA9555_REGISTER_LEN                (0x02)
+/*****************************************************************************/
 
 /**
- * @brief TCA9555 register
+ * @brief TCA9555 register type
  */
-enum tca9555_register
+typedef uint16_t tca9555_reg_t;
+
+/**
+ * @brief TCA9555 register address
+ */
+typedef enum
 {
-    TCA9555_INPUT_REG = 0x00,
-    TCA9555_OUTPUT_REG = 0x02,
-    TCA9555_POLARITY_INV_REG = 0x4,
-    TCA9555_CONFIGURATION_REG = 0x6,
-    TCA9555_MAX_REG
-};
+    TCA9555_REG_ADDR_INPUT = 0x00,
+    TCA9555_REG_ADDR_OUTPUT = 0x02,
+    TCA9555_REG_ADDR_POLARITY_INV = 0x4,
+    TCA9555_REG_ADDR_CONFIGURATION = 0x6,
+    TCA9555_REG_ADDR_MAX
+} tca9555_reg_addr_t;
 
 /**
  * @brief Check device pointer structure
@@ -93,14 +97,14 @@ static tca9555_err_t tca9555_device_check(const tca9555_dev_t *device)
  * @brief Read TCA9555 register
  *
  * @param device - pointer to device struct
- * @param reg - read register
- * @param data - pointer to the data
+ * @param reg_addr - read register address
+ * @param data - pointer to the register data
  * @return TCA9555_OK - success
  *         TCA9555_E_NULL_PTR - i2c_read or i2c_write functions is null
  *         TCA9555_E_FAILED - invalid device i2c_addr or read register
  */
-static tca9555_err_t tca9555_read_reg(const tca9555_dev_t *device, uint8_t reg,
-        uint16_t *data)
+static tca9555_err_t tca9555_read_reg(const tca9555_dev_t *device,
+        tca9555_reg_addr_t reg_addr, tca9555_reg_t *data)
 {
     uint16_t rslt = TCA9555_OK;
 
@@ -108,7 +112,7 @@ static tca9555_err_t tca9555_read_reg(const tca9555_dev_t *device, uint8_t reg,
     if(rslt != TCA9555_OK)
         goto exit;
 
-    if(reg >= TCA9555_MAX_REG) {
+    if(reg_addr >= TCA9555_REG_ADDR_MAX) {
         rslt = TCA9555_E_FAILED;
         goto exit;
     }
@@ -118,8 +122,8 @@ static tca9555_err_t tca9555_read_reg(const tca9555_dev_t *device, uint8_t reg,
         goto exit;
     }
 
-    rslt = device->i2c_read(device->i2c_addr, reg,
-            (uint8_t *)data, TCA9555_REGISTER_LEN);
+    rslt = device->i2c_read(device->i2c_addr, reg_addr,
+            (uint8_t *)data, sizeof(tca9555_reg_t));
     if(rslt != TCA9555_OK) {
         rslt = TCA9555_E_I2C_COM_FAILED;
         goto exit;
@@ -127,21 +131,22 @@ static tca9555_err_t tca9555_read_reg(const tca9555_dev_t *device, uint8_t reg,
 
     *data = le16toh(*data);
 
-    exit: return rslt;
+exit:
+    return rslt;
 }
 
 /**
  * @brief Write TCA9555 register
  *
  * @param device - pointer to device struct
- * @param reg - write register
- * @param data - pointer to the data
+ * @param reg_addr - write register address
+ * @param data - pointer to the register data
  * @return TCA9555_OK - success
  *         TCA9555_E_NULL_PTR - i2c_read or i2c_write functions is null
  *         TCA9555_E_FAILED - invalid device i2c_addr or read register
  */
-static tca9555_err_t tca9555_write_reg(const tca9555_dev_t *device, uint8_t reg,
-        uint16_t *data)
+static tca9555_err_t tca9555_write_reg(const tca9555_dev_t *device,
+        tca9555_reg_addr_t reg_addr, tca9555_reg_t *data)
 {
     uint16_t rslt = TCA9555_OK;
 
@@ -149,7 +154,7 @@ static tca9555_err_t tca9555_write_reg(const tca9555_dev_t *device, uint8_t reg,
     if(rslt != TCA9555_OK)
         goto exit;
 
-    if(reg >= TCA9555_MAX_REG) {
+    if(reg_addr >= TCA9555_REG_ADDR_MAX) {
         rslt = TCA9555_E_FAILED;
         goto exit;
     }
@@ -161,14 +166,15 @@ static tca9555_err_t tca9555_write_reg(const tca9555_dev_t *device, uint8_t reg,
 
     *data = htole16(*data);
 
-    rslt = device->i2c_write(device->i2c_addr, reg,
-            (uint8_t *)data, TCA9555_REGISTER_LEN);
+    rslt = device->i2c_write(device->i2c_addr, reg_addr,
+            (uint8_t *)data, sizeof(tca9555_reg_t));
     if(rslt != TCA9555_OK) {
         rslt = TCA9555_E_I2C_COM_FAILED;
         goto exit;
     }
 
-    exit: return rslt;
+exit:
+    return rslt;
 }
 
 /**
@@ -184,7 +190,7 @@ tca9555_err_t tca9555_gpio_init(tca9555_dev_t *device, tca9555_gpio_pin_t pin,
         tca9555_gpio_mode_t mode)
 {
     tca9555_err_t rslt;
-    uint16_t config_register = {0};
+    tca9555_reg_t config_register = {0};
 
     rslt = tca9555_device_check(device);
     if(rslt != TCA9555_OK)
@@ -200,18 +206,19 @@ tca9555_err_t tca9555_gpio_init(tca9555_dev_t *device, tca9555_gpio_pin_t pin,
         goto exit;
     }
 
-    rslt = tca9555_read_reg(device, TCA9555_CONFIGURATION_REG, &config_register);
+    rslt = tca9555_read_reg(device, TCA9555_REG_ADDR_CONFIGURATION,
+            &config_register);
     if(rslt != TCA9555_OK)
         goto exit;
 
-    if(mode == TCA9555_GPIO_OUTPUT)
-      BIT_CLR(config_register, pin);
-    else
-      BIT_SET(config_register, pin);
+    if(BIT_CHECK(config_register, pin) != mode) {
+        BIT_TGL(config_register, pin);
+        rslt = tca9555_write_reg(device, TCA9555_REG_ADDR_CONFIGURATION,
+                &config_register);
+    }
 
-    rslt = tca9555_write_reg(device, TCA9555_CONFIGURATION_REG, &config_register);
-
-    exit: return rslt;
+exit:
+    return rslt;
 }
 
 /**
@@ -227,7 +234,7 @@ tca9555_err_t tca9555_gpio_polarity(tca9555_dev_t *device,
         tca9555_gpio_pin_t pin, tca9555_gpio_polarity_t polarity)
 {
     tca9555_err_t rslt;
-    uint16_t polarity_register = {0};
+    tca9555_reg_t polarity_register = {0};
 
     rslt = tca9555_device_check(device);
     if(rslt != TCA9555_OK)
@@ -244,18 +251,19 @@ tca9555_err_t tca9555_gpio_polarity(tca9555_dev_t *device,
         goto exit;
     }
 
-    rslt = tca9555_read_reg(device, TCA9555_POLARITY_INV_REG, &polarity_register);
+    rslt = tca9555_read_reg(device, TCA9555_REG_ADDR_POLARITY_INV,
+            &polarity_register);
     if(rslt != TCA9555_OK)
         goto exit;
 
-    if(polarity == TCA9555_GPIO_POLARITY_INVERT)
-      BIT_SET(polarity_register, pin);
-    else
-      BIT_CLR(polarity_register, pin);
+    if(BIT_CHECK(polarity_register, pin) != polarity) {
+        BIT_TGL(polarity_register, pin);
+        rslt = tca9555_write_reg(device, TCA9555_REG_ADDR_POLARITY_INV,
+                &polarity_register);
+    }
 
-    rslt = tca9555_write_reg(device, TCA9555_POLARITY_INV_REG, &polarity_register);
-
-    exit: return rslt;
+exit:
+    return rslt;
 }
 
 /**
@@ -271,7 +279,7 @@ tca9555_err_t tca9555_gpio_read(tca9555_dev_t *device,
         tca9555_gpio_pin_t pin, tca9555_gpio_state_t *state)
 {
     tca9555_err_t rslt;
-    uint16_t input_register = {0};
+    tca9555_reg_t input_register = {0};
 
     rslt = tca9555_device_check(device);
     if(rslt != TCA9555_OK)
@@ -282,7 +290,12 @@ tca9555_err_t tca9555_gpio_read(tca9555_dev_t *device,
         goto exit;
     }
 
-    rslt = tca9555_read_reg(device, TCA9555_INPUT_REG, &input_register);
+    if(state == NULL) {
+        rslt = TCA9555_E_NULL_PTR;
+        goto exit;
+    }
+
+    rslt = tca9555_read_reg(device, TCA9555_REG_ADDR_INPUT, &input_register);
     if(rslt != TCA9555_OK)
         goto exit;
 
@@ -293,7 +306,8 @@ tca9555_err_t tca9555_gpio_read(tca9555_dev_t *device,
         *state = TCA9555_GPIO_PIN_RESET;
     }
 
-    exit: return rslt;
+exit:
+    return rslt;
 }
 
 /**
@@ -309,7 +323,7 @@ tca9555_err_t tca9555_gpio_write(tca9555_dev_t *device, tca9555_gpio_pin_t pin,
         tca9555_gpio_state_t state)
 {
     tca9555_err_t rslt;
-    uint16_t output_register = {0};
+    tca9555_reg_t output_register = {0};
 
     rslt = tca9555_device_check(device);
     if(rslt != TCA9555_OK)
@@ -325,18 +339,17 @@ tca9555_err_t tca9555_gpio_write(tca9555_dev_t *device, tca9555_gpio_pin_t pin,
         goto exit;
     }
 
-    rslt = tca9555_read_reg(device, TCA9555_OUTPUT_REG, &output_register);
+    rslt = tca9555_read_reg(device, TCA9555_REG_ADDR_OUTPUT, &output_register);
     if(rslt != TCA9555_OK)
         goto exit;
 
-    if(state == TCA9555_GPIO_PIN_SET)
-      BIT_SET(output_register, pin);
-    else
-      BIT_CLR(output_register, pin);
+    if(BIT_CHECK(output_register, pin) != state) {
+        BIT_TGL(output_register, pin);
+        rslt = tca9555_write_reg(device, TCA9555_REG_ADDR_OUTPUT, &output_register);
+    }
 
-    rslt = tca9555_write_reg(device, TCA9555_OUTPUT_REG, &output_register);
-
-    exit: return rslt;
+exit:
+    return rslt;
 }
 
 /**
@@ -350,7 +363,7 @@ tca9555_err_t tca9555_gpio_write(tca9555_dev_t *device, tca9555_gpio_pin_t pin,
 tca9555_err_t tca9555_gpio_toggle(tca9555_dev_t *device, tca9555_gpio_pin_t pin)
 {
     tca9555_err_t rslt;
-    uint16_t output_register = {0};
+    tca9555_reg_t output_register = {0};
 
     rslt = tca9555_device_check(device);
     if(rslt != TCA9555_OK)
@@ -361,16 +374,14 @@ tca9555_err_t tca9555_gpio_toggle(tca9555_dev_t *device, tca9555_gpio_pin_t pin)
         goto exit;
     }
 
-    rslt = tca9555_read_reg(device, TCA9555_OUTPUT_REG, &output_register);
+    rslt = tca9555_read_reg(device, TCA9555_REG_ADDR_OUTPUT, &output_register);
     if(rslt != TCA9555_OK)
         goto exit;
 
-    if(BIT_CHECK(output_register, pin))
-      BIT_CLR(output_register, pin);
-    else
-      BIT_SET(output_register, pin);
+    BIT_TGL(output_register, pin);
 
-    rslt = tca9555_write_reg(device, TCA9555_OUTPUT_REG, &output_register);
+    rslt = tca9555_write_reg(device, TCA9555_REG_ADDR_OUTPUT, &output_register);
 
-    exit: return rslt;
+exit:
+    return rslt;
 }
