@@ -36,8 +36,8 @@
 
 #if ((BIG_ENDIAN) || (defined __C51__) || (defined __RC51__) || (defined _CC51))
 //! Big Endian Compilers: Bit swapping necessary
-#define htobe16(x) ((((x) >> 8) & 0x00FF) | (((x) << 8) & 0xFF00))
-#define be16toh(x) ((((x) >> 8) & 0x00FF) | (((x) << 8) & 0xFF00))
+#define htole16(x) ((((x) >> 8) & 0x00FF) | (((x) << 8) & 0xFF00))
+#define le16toh(x) ((((x) >> 8) & 0x00FF) | (((x) << 8) & 0xFF00))
 #elif ((LITTLE_ENDIAN) || (defined __GNUC__) || (defined __clang__) ||(defined SDCC) || (defined HI_TECH_C) || (defined __ICC8051__))
 #define htole16(x) (x)
 #define le16toh(x) (x)
