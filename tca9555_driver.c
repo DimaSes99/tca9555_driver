@@ -50,7 +50,7 @@
 #define BIT_SET(reg,nbit)                   (reg) |=  (1<<(nbit))
 #define BIT_CLR(reg,nbit)                   (reg) &= ~(1<<(nbit))
 #define BIT_TGL(reg,nbit)                   (reg) ^=  (1<<(nbit))
-#define BIT_CHECK(reg,nbit)                 ((reg) &  (1<<(nbit)))
+#define BIT_CHECK(reg,nbit)                 (((reg) & (1 << (nbit))) >> (nbit))
 
 /*****************************************************************************/
 
